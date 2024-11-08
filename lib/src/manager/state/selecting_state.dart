@@ -15,6 +15,9 @@ abstract class ISelectingState {
   /// Calculate the currently selected cell and its multi-selection range.
   PlutoGridCellPosition? get currentSelectingPosition;
 
+  /// First position of multi-select cell.
+  PlutoGridCellPosition? get firstSelectingPosition;
+
   /// Position list of currently selected.
   /// Only valid in [PlutoGridSelectingMode.cell].
   ///
@@ -87,6 +90,10 @@ abstract class ISelectingState {
   /// The action that is selected in the Select dialog
   /// and processed after the dialog is closed.
   void handleAfterSelectingRow(PlutoCell cell, dynamic value);
+
+  void selectCell(PlutoColumn column, int rowIdx);
+
+  void unselectCell(PlutoColumn column, int rowIdx);
 }
 
 class _State {
@@ -96,7 +103,19 @@ class _State {
 
   List<PlutoRow> _currentSelectingRows = [];
 
-  PlutoGridCellPosition? _currentSelectingPosition;
+  PlutoGridCellPosition? _currentSelectingPositionWithShift;
+
+  PlutoGridCellPosition? _firstSelectingPositionWithShiftOrMeta;
+
+  final _selectedPositionsWithMeta = <PlutoGridCellPosition>{};
+
+  final _ignoredPositionsWithMeta = <PlutoGridCellPosition>{};
+
+  bool get isSelectingWithShift =>
+      _currentSelectingPositionWithShift != null &&
+      _selectedPositionsWithMeta.isEmpty;
+
+  bool get isSelectingWithMeta => _selectedPositionsWithMeta.isNotEmpty;
 }
 
 mixin SelectingState implements IPlutoGridState {
@@ -110,11 +129,17 @@ mixin SelectingState implements IPlutoGridState {
 
   @override
   PlutoGridCellPosition? get currentSelectingPosition =>
-      _state._currentSelectingPosition;
+      _state._currentSelectingPositionWithShift;
+
+  @override
+  PlutoGridCellPosition? get firstSelectingPosition =>
+      _state._firstSelectingPositionWithShiftOrMeta;
 
   @override
   List<PlutoGridSelectingCellPosition> get currentSelectingPositionList {
-    if (currentCellPosition == null || currentSelectingPosition == null) {
+    // No selections either with shift or meta.
+    if ((currentCellPosition == null || currentSelectingPosition == null) &&
+        _state._selectedPositionsWithMeta.isEmpty) {
       return [];
     }
 
@@ -197,7 +222,13 @@ mixin SelectingState implements IPlutoGridState {
 
     _state._currentSelectingRows = [];
 
-    _state._currentSelectingPosition = null;
+    _state._currentSelectingPositionWithShift = null;
+
+    _state._firstSelectingPositionWithShiftOrMeta = null;
+
+    _state._ignoredPositionsWithMeta.clear();
+
+    _state._selectedPositionsWithMeta.clear();
 
     _state._selectingMode = selectingMode;
 
@@ -213,7 +244,7 @@ mixin SelectingState implements IPlutoGridState {
     switch (selectingMode) {
       case PlutoGridSelectingMode.cell:
       case PlutoGridSelectingMode.horizontal:
-        _setFistCellAsCurrent();
+        _setFirstCellAsCurrent();
 
         setCurrentSelectingPosition(
           cellPosition: PlutoGridCellPosition(
@@ -224,10 +255,10 @@ mixin SelectingState implements IPlutoGridState {
         break;
       case PlutoGridSelectingMode.row:
         if (currentCell == null) {
-          _setFistCellAsCurrent();
+          _setFirstCellAsCurrent();
         }
 
-        _state._currentSelectingPosition = PlutoGridCellPosition(
+        _state._currentSelectingPositionWithShift = PlutoGridCellPosition(
           columnIdx: refColumns.length - 1,
           rowIdx: refRows.length - 1,
         );
@@ -253,8 +284,10 @@ mixin SelectingState implements IPlutoGridState {
       return;
     }
 
-    _state._currentSelectingPosition =
+    _state._currentSelectingPositionWithShift =
         isInvalidCellPosition(cellPosition) ? null : cellPosition;
+
+    _state._firstSelectingPositionWithShiftOrMeta ??= currentCellPosition;
 
     if (currentSelectingPosition != null && selectingMode.isRow) {
       setCurrentSelectingRowsByRange(
@@ -285,6 +318,10 @@ mixin SelectingState implements IPlutoGridState {
   @override
   void setCurrentSelectingPositionWithOffset(Offset? offset) {
     if (currentCell == null) {
+      return;
+    }
+
+    if (_state.isSelectingWithMeta) {
       return;
     }
 
@@ -370,6 +407,8 @@ mixin SelectingState implements IPlutoGridState {
 
     _clearCurrentSelectingRows(notify: false);
 
+    _clearIndividuallySelectedCells(notify: false);
+
     notifyListeners(notify, clearCurrentSelecting.hashCode);
   }
 
@@ -398,9 +437,21 @@ mixin SelectingState implements IPlutoGridState {
 
   @override
   bool isSelectingInteraction() {
-    return !selectingMode.isNone &&
-        (keyPressed.shift || keyPressed.ctrl) &&
-        currentCell != null;
+    if (selectingMode.isNone) {
+      return false;
+    }
+
+    // No keys pressed
+    if (!(keyPressed.shift || keyPressed.ctrl || keyPressed.meta)) {
+      return false;
+    }
+
+    // No current cell.
+    if (currentCell == null) {
+      return false;
+    }
+
+    return true;
   }
 
   @override
@@ -417,6 +468,96 @@ mixin SelectingState implements IPlutoGridState {
         null;
   }
 
+  @override
+  void selectCell(PlutoColumn column, int rowIdx) {
+    // Not in selecting state.
+    if (!_state._isSelecting) {
+      return;
+    }
+
+    // Not in cell select mode.
+    if (!selectingMode.isCell) {
+      return;
+    }
+
+    // If selecting a range using shift, change into meta mode which only allows
+    // individual selection.
+    if (_state.isSelectingWithShift) {
+      // Get selecting cells and remove ignored positions.
+      final selectingCells = _selectingCells()
+        // Remove those that have been ignored.
+        ..removeWhere(
+          (cellSelectingPosition) => _state._ignoredPositionsWithMeta.contains(
+            PlutoGridCellPosition(
+              rowIdx: cellSelectingPosition.rowIdx,
+              columnIdx: cellSelectingPosition.columnIdx,
+            ),
+          ),
+        );
+
+      // Convert to positions.
+      final selectedCellPositions = selectingCells.map(
+        (cellSelectingPosition) => PlutoGridCellPosition(
+          rowIdx: cellSelectingPosition.rowIdx,
+          columnIdx: cellSelectingPosition.columnIdx,
+        ),
+      );
+
+      // Add all selected cells.
+      _state._selectedPositionsWithMeta.addAll(selectedCellPositions);
+
+      // Clear existing.
+      _state._ignoredPositionsWithMeta.clear();
+    }
+
+    // Add selected cell.
+    _state._selectedPositionsWithMeta.add(
+      PlutoGridCellPosition(
+        columnIdx: columnIndex(column),
+        rowIdx: rowIdx,
+      ),
+    );
+
+    // First cell added, so mark it as first.
+    if (_state._selectedPositionsWithMeta.length == 1) {
+      _state._firstSelectingPositionWithShiftOrMeta =
+          _state._selectedPositionsWithMeta.first;
+    }
+
+    notifyListeners(true, selectCell.hashCode);
+  }
+
+  @override
+  void unselectCell(PlutoColumn column, int rowIdx) {
+    // Not in selecting state.
+    if (!_state._isSelecting) {
+      return;
+    }
+
+    // Not in cell select mode.
+    if (!selectingMode.isCell) {
+      return;
+    }
+
+    final cellPosition = PlutoGridCellPosition(
+      columnIdx: columnIndex(column),
+      rowIdx: rowIdx,
+    );
+
+    // When using shift, we can ignore specific cells, but cannot add specific cells,
+    // so add it to ignored cell.
+    if (_state.isSelectingWithShift) {
+      _state._ignoredPositionsWithMeta.add(
+        cellPosition,
+      );
+    } else {
+      // Remove added cell since you can individually add and remove cells in this mode.
+      _state._selectedPositionsWithMeta.remove(cellPosition);
+    }
+
+    notifyListeners(true, unselectCell.hashCode);
+  }
+
   // todo : code cleanup
   @override
   bool isSelectedCell(PlutoCell cell, PlutoColumn column, int rowIdx) {
@@ -428,11 +569,28 @@ mixin SelectingState implements IPlutoGridState {
       return false;
     }
 
-    if (currentSelectingPosition == null) {
+    if (currentSelectingPosition == null &&
+        _state._selectedPositionsWithMeta.isEmpty) {
       return false;
     }
 
     if (selectingMode.isCell) {
+      final cellPosition = PlutoGridCellPosition(
+        columnIdx: columnIndex(column),
+        rowIdx: rowIdx,
+      );
+
+      // Individually selecting, so just check if it's there.
+      if (_state.isSelectingWithMeta) {
+        return _state._selectedPositionsWithMeta.contains(cellPosition);
+      }
+
+      // Selecting with shift, so we need to check if individually ignored.
+      if (_state._ignoredPositionsWithMeta.contains(cellPosition)) {
+        return false;
+      }
+
+      // Selecting with shift, so we need to check ranges.
       final bool inRangeOfRows = min(
                 currentCellPosition!.rowIdx as num,
                 currentSelectingPosition!.rowIdx as num,
@@ -547,6 +705,19 @@ mixin SelectingState implements IPlutoGridState {
 
     final columnIndexes = columnIndexesByShowFrozen;
 
+    // Individually selecting, so just return cells.
+    if (_state.isSelectingWithMeta) {
+      return _state._selectedPositionsWithMeta.map((cellPosition) {
+        final field = refColumns[columnIndexes[cellPosition.columnIdx!]].field;
+
+        return PlutoGridSelectingCellPosition(
+          rowIdx: cellPosition.rowIdx,
+          field: field,
+          columnIdx: cellPosition.columnIdx,
+        );
+      }).toList();
+    }
+
     int columnStartIdx = min(
         currentCellPosition!.columnIdx!, currentSelectingPosition!.columnIdx!);
 
@@ -563,9 +734,16 @@ mixin SelectingState implements IPlutoGridState {
       for (int j = columnStartIdx; j <= columnEndIdx; j += 1) {
         final String field = refColumns[columnIndexes[j]].field;
 
+        // Skip individually ignored positions.
+        if (_state._ignoredPositionsWithMeta
+            .contains(PlutoGridCellPosition(columnIdx: j, rowIdx: i))) {
+          continue;
+        }
+
         positions.add(PlutoGridSelectingCellPosition(
           rowIdx: i,
           field: field,
+          columnIdx: j,
         ));
       }
     }
@@ -610,6 +788,7 @@ mixin SelectingState implements IPlutoGridState {
 
         positions.add(PlutoGridSelectingCellPosition(
           rowIdx: i,
+          columnIdx: j,
           field: field,
         ));
 
@@ -678,7 +857,7 @@ mixin SelectingState implements IPlutoGridState {
     return currentCell!.value.toString();
   }
 
-  void _setFistCellAsCurrent() {
+  void _setFirstCellAsCurrent() {
     setCurrentCell(firstCell, 0, notify: false);
 
     if (isEditing == true) {
@@ -691,7 +870,9 @@ mixin SelectingState implements IPlutoGridState {
       return;
     }
 
-    _state._currentSelectingPosition = null;
+    _state._currentSelectingPositionWithShift = null;
+
+    _state._firstSelectingPositionWithShiftOrMeta = null;
 
     if (notify) {
       notifyListeners();
@@ -704,6 +885,20 @@ mixin SelectingState implements IPlutoGridState {
     }
 
     _state._currentSelectingRows = [];
+
+    if (notify) {
+      notifyListeners();
+    }
+  }
+
+  void _clearIndividuallySelectedCells({bool notify = true}) {
+    if (_state._ignoredPositionsWithMeta.isEmpty &&
+        _state._selectedPositionsWithMeta.isEmpty) {
+      return;
+    }
+
+    _state._ignoredPositionsWithMeta.clear();
+    _state._selectedPositionsWithMeta.clear();
 
     if (notify) {
       notifyListeners();

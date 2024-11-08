@@ -92,8 +92,7 @@ void main() {
       'PlutoMode = normal, '
       'isEditing = true, '
       'Then, '
-      'setKeepFocus(true) 가 호출 되고, '
-      'setCurrentCell 이 호출 되어야 한다.',
+      'setEditing(false)',
       () {
         // given
         when(stateManager.hasFocus).thenReturn(false);
@@ -115,10 +114,7 @@ void main() {
         event.handler(stateManager);
 
         // then
-        verify(stateManager.setKeepFocus(true)).called(1);
-        verify(stateManager.setCurrentCell(cell, rowIdx)).called(1);
-        // 호출 되지 않아야 할 메소드
-        verifyNever(stateManager.setEditing(any));
+        verify(stateManager.setEditing(false)).called(1);
       },
     );
 

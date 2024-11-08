@@ -73,16 +73,46 @@ class PlutoGridCellGestureEvent extends PlutoGridEvent {
   void _onTapUp(PlutoGridStateManager stateManager) {
     if (_setKeepFocusAndCurrentCell(stateManager)) {
       return;
-    } else if (stateManager.isSelectingInteraction()) {
+    }
+    // Triggering multi-select mode.
+    else if (stateManager.isSelectingInteraction()) {
       _selecting(stateManager);
       return;
     } else if (stateManager.mode.isSelectMode) {
       _selectMode(stateManager);
       return;
     }
+    // Selecting a cell and the cell tapped was not a selected or current cell nor editing.
+    else if (stateManager.isSelecting &&
+        stateManager.selectingMode.isCell &&
+        !stateManager.isSelectedCell(cell, column, rowIdx) &&
+        !stateManager.isCurrentCell(cell) &&
+        !stateManager.isEditing) {
+      // Exit selection mode and clear selected cells.
+      stateManager.setSelecting(false);
+      stateManager.clearCurrentSelecting();
+    }
 
+    // Cell is currently focused and not editing yet.
     if (stateManager.isCurrentCell(cell) && stateManager.isEditing != true) {
-      stateManager.setEditing(true);
+      // Selected cell, so go into edit mode without clearing selected cells.
+      if (stateManager.isSelecting) {
+        stateManager.setEditingSelectedCell(true);
+      } else {
+        // Go into edit mode and clear selected cells.
+        stateManager.setEditing(true);
+      }
+    }
+    // Currently selected cell is being edited.
+    else if (stateManager.isEditing) {
+      // Cells are selected, so just exit the edit mode for the selected cell
+      // without clearing selected cells.
+      if (stateManager.isSelecting) {
+        stateManager.setEditingSelectedCell(false);
+      } else {
+        // Cells are not selected, so just clear selected cells.
+        stateManager.setEditing(false);
+      }
     } else {
       stateManager.setCurrentCell(cell, rowIdx);
     }
@@ -157,7 +187,13 @@ class PlutoGridCellGestureEvent extends PlutoGridEvent {
   void _selecting(PlutoGridStateManager stateManager) {
     bool callOnSelected = stateManager.mode.isMultiSelectMode;
 
+    // Using shift key to select cells.
     if (stateManager.keyPressed.shift) {
+      // If not in selecting mode yet for cells, trigger it.
+      if (stateManager.selectingMode.isCell) {
+        stateManager.setSelecting(true);
+      }
+
       final int? columnIdx = stateManager.columnIndex(column);
 
       stateManager.setCurrentSelectingPosition(
@@ -166,6 +202,21 @@ class PlutoGridCellGestureEvent extends PlutoGridEvent {
           rowIdx: rowIdx,
         ),
       );
+    }
+    // Selecting cells using meta key.
+    else if (stateManager.keyPressed.meta) {
+      // Not in selecting mode yet, so set first selection as current cell
+      // and toggle selection mode.
+      if (!stateManager.isSelecting) {
+        stateManager.setCurrentCell(cell, rowIdx);
+        stateManager.setSelecting(true);
+      }
+
+      if (stateManager.isSelectedCell(cell, column, rowIdx)) {
+        stateManager.unselectCell(column, rowIdx);
+      } else {
+        stateManager.selectCell(column, rowIdx);
+      }
     } else if (stateManager.keyPressed.ctrl) {
       stateManager.toggleSelectingRow(rowIdx);
     } else {

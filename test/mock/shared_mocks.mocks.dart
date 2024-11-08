@@ -2248,6 +2248,20 @@ class MockPlutoGridStateManager extends _i1.Mock
       );
 
   @override
+  void setEditingSelectedCell(
+    bool? flag, {
+    bool? notify = true,
+  }) =>
+      super.noSuchMethod(
+        Invocation.method(
+          #setEditingSelectedCell,
+          [flag],
+          {#notify: notify},
+        ),
+        returnValueForMissingStub: null,
+      );
+
+  @override
   void setAutoEditing(
     bool? flag, {
     bool? notify = true,
@@ -3532,6 +3546,38 @@ class MockPlutoGridStateManager extends _i1.Mock
       );
 
   @override
+  void selectCell(
+    _i2.PlutoColumn? column,
+    int? rowIdx,
+  ) =>
+      super.noSuchMethod(
+        Invocation.method(
+          #selectCell,
+          [
+            column,
+            rowIdx,
+          ],
+        ),
+        returnValueForMissingStub: null,
+      );
+
+  @override
+  void unselectCell(
+    _i2.PlutoColumn? column,
+    int? rowIdx,
+  ) =>
+      super.noSuchMethod(
+        Invocation.method(
+          #unselectCell,
+          [
+            column,
+            rowIdx,
+          ],
+        ),
+        returnValueForMissingStub: null,
+      );
+
+  @override
   void updateVisibilityLayout({bool? notify = false}) => super.noSuchMethod(
         Invocation.method(
           #updateVisibilityLayout,
@@ -3728,6 +3774,13 @@ class MockPlutoGridKeyPressed extends _i1.Mock
   @override
   bool get ctrl => (super.noSuchMethod(
         Invocation.getter(#ctrl),
+        returnValue: false,
+        returnValueForMissingStub: false,
+      ) as bool);
+
+  @override
+  bool get meta => (super.noSuchMethod(
+        Invocation.getter(#meta),
         returnValue: false,
         returnValueForMissingStub: false,
       ) as bool);

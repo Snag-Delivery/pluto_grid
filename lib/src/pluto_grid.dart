@@ -506,7 +506,7 @@ class PlutoGridState extends PlutoStateWithChange<PlutoGrid> {
         horizontal: _horizontalScroll,
       ),
       columnGroups: widget.columnGroups,
-      onChanged: widget.onChanged,
+      onChanged: _onChanged,
       onSelected: widget.onSelected,
       onSorted: widget.onSorted,
       onRowChecked: widget.onRowChecked,
@@ -577,6 +577,39 @@ class PlutoGridState extends PlutoStateWithChange<PlutoGrid> {
 
       _stateManager.gridFocusNode.requestFocus();
     });
+  }
+
+  void _onChanged(PlutoGridOnChangedEvent event) {
+    // If cell that changed is the current one and we're in cell select mode.
+    if (stateManager.firstSelectingPosition?.columnIdx == event.columnIdx &&
+        stateManager.firstSelectingPosition?.rowIdx == event.rowIdx &&
+        stateManager.selectingMode.isCell) {
+      final modifiedCell = event.row.cells[event.column.field]!;
+
+      // Iterate and update selected cells.
+      for (final selectingCellPosition
+          in stateManager.currentSelectingPositionList) {
+        // Build cell.
+        final column = stateManager.columns[selectingCellPosition.columnIdx!];
+        final cell = stateManager
+            .rows[selectingCellPosition.rowIdx!].cells[column.field]!;
+
+        // Only update cells that are in the same column.
+        if (cell.column.key != modifiedCell.column.key) {
+          continue;
+        }
+
+        cell.value = modifiedCell.value;
+      }
+
+      // Get out of selecting state.
+      stateManager.clearCurrentSelecting();
+      stateManager.setSelecting(false);
+    }
+
+    if (widget.onChanged != null) {
+      widget.onChanged!(event);
+    }
   }
 
   void _initHeaderFooter() {

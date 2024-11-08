@@ -25,10 +25,10 @@ void main() {
 
         final selected = [
           // @formatter:off
-          ['column1', 1], ['column2', 1],
-          ['column1', 2], ['column2', 2],
-          ['column1', 3], ['column2', 3],
-          ['column1', 4], ['column2', 4],
+          ['column1', 1, 1], ['column2', 1, 2],
+          ['column1', 2, 1], ['column2', 2, 2],
+          ['column1', 3, 1], ['column2', 3, 2],
+          ['column1', 4, 1], ['column2', 4, 2],
           // @formatter:on
         ];
 
@@ -42,6 +42,7 @@ void main() {
             PlutoGridSelectingCellPosition(
               field: selected[i][0] as String,
               rowIdx: selected[i][1] as int,
+              columnIdx: selected[i][2] as int,
             ),
           );
         }
@@ -59,8 +60,8 @@ void main() {
 
         final selected = [
           // @formatter:off
-          ['column1', 1], ['column2', 1],
-          ['column1', 2], ['column2', 2],
+          ['column1', 1, 1], ['column2', 1, 2],
+          ['column1', 2, 1], ['column2', 2, 2],
           // @formatter:on
         ];
 
@@ -74,6 +75,7 @@ void main() {
             PlutoGridSelectingCellPosition(
               field: selected[i][0] as String,
               rowIdx: selected[i][1] as int,
+              columnIdx: selected[i][2] as int,
             ),
           );
         }
@@ -100,8 +102,11 @@ void main() {
 
         final selected = [
           // @formatter:off
-          ['column1', 0], ['column2', 0], ['column3', 0], ['column4', 0],
-          ['column0', 1],
+          ['column1', 0, 1],
+          ['column2', 0, 2],
+          ['column3', 0, 3],
+          ['column4', 0, 4],
+          ['column0', 1, 0],
           // @formatter:on
         ];
 
@@ -115,6 +120,7 @@ void main() {
             PlutoGridSelectingCellPosition(
               field: selected[i][0] as String,
               rowIdx: selected[i][1] as int,
+              columnIdx: selected[i][2] as int,
             ),
           );
         }
@@ -132,8 +138,11 @@ void main() {
 
         final selected = [
           // @formatter:off
-          ['column1', 0], ['column2', 0], ['column3', 0], ['column4', 0],
-          ['column0', 1],
+          ['column1', 0, 1],
+          ['column2', 0, 2],
+          ['column3', 0, 3],
+          ['column4', 0, 4],
+          ['column0', 1, 0],
           // @formatter:on
         ];
 
@@ -147,6 +156,7 @@ void main() {
             PlutoGridSelectingCellPosition(
               field: selected[i][0] as String,
               rowIdx: selected[i][1] as int,
+              columnIdx: selected[i][2] as int,
             ),
           );
         }
@@ -164,7 +174,7 @@ void main() {
 
         final selected = [
           // @formatter:off
-          ['column0', 1],
+          ['column0', 1, 0],
           // @formatter:on
         ];
 
@@ -178,6 +188,7 @@ void main() {
             PlutoGridSelectingCellPosition(
               field: selected[i][0] as String,
               rowIdx: selected[i][1] as int,
+              columnIdx: selected[i][2] as int,
             ),
           );
         }
@@ -195,7 +206,8 @@ void main() {
 
         final selected = [
           // @formatter:off
-          ['column0', 1], ['column1', 1],
+          ['column0', 1, 0],
+          ['column1', 1, 1],
           // @formatter:on
         ];
 
@@ -209,6 +221,7 @@ void main() {
             PlutoGridSelectingCellPosition(
               field: selected[i][0] as String,
               rowIdx: selected[i][1] as int,
+              columnIdx: selected[i][2] as int,
             ),
           );
         }
@@ -226,7 +239,8 @@ void main() {
 
         final selected = [
           // @formatter:off
-          ['column0', 1], ['column1', 1],
+          ['column0', 1, 0],
+          ['column1', 1, 1],
           // @formatter:on
         ];
 
@@ -240,6 +254,7 @@ void main() {
             PlutoGridSelectingCellPosition(
               field: selected[i][0] as String,
               rowIdx: selected[i][1] as int,
+              columnIdx: selected[i][2] as int,
             ),
           );
         }
