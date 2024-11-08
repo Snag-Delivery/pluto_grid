@@ -451,10 +451,12 @@ class PlutoGridCellPosition {
 class PlutoGridSelectingCellPosition {
   final String? field;
   final int? rowIdx;
+  final int? columnIdx;
 
   const PlutoGridSelectingCellPosition({
     this.field,
     this.rowIdx,
+    this.columnIdx,
   });
 
   @override
@@ -463,11 +465,12 @@ class PlutoGridSelectingCellPosition {
         other is PlutoGridSelectingCellPosition &&
             runtimeType == other.runtimeType &&
             field == other.field &&
-            rowIdx == other.rowIdx;
+            rowIdx == other.rowIdx &&
+            columnIdx == other.columnIdx;
   }
 
   @override
-  int get hashCode => Object.hash(field, rowIdx);
+  int get hashCode => Object.hash(field, rowIdx, columnIdx);
 }
 
 class PlutoGridKeyPressed {
@@ -483,6 +486,13 @@ class PlutoGridKeyPressed {
 
     return !(!keysPressed.contains(LogicalKeyboardKey.controlLeft) &&
         !keysPressed.contains(LogicalKeyboardKey.controlRight));
+  }
+
+  bool get meta {
+    final keysPressed = HardwareKeyboard.instance.logicalKeysPressed;
+
+    return !(!keysPressed.contains(LogicalKeyboardKey.metaLeft) &&
+        !keysPressed.contains(LogicalKeyboardKey.metaRight));
   }
 }
 
